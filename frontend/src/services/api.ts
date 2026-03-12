@@ -82,7 +82,8 @@ class ApiService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = API_BASE_URL;
+    // Remove trailing slash from base URL to prevent double slashes
+    this.baseUrl = API_BASE_URL.replace(/\/$/, '');
   }
 
   async getStats(): Promise<DashboardStats> {
