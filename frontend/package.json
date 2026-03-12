@@ -2,7 +2,7 @@
   "name": "fraud-guard",
   "description": "Deep learning credit card fraud detection system using a hybrid GraphSAGE + Autoencoder architecture.",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
