@@ -26,14 +26,14 @@ scaler = joblib.load("saved_models/scaler.pkl")
 threshold = joblib.load("saved_models/threshold.pkl")
 
 autoencoder = Autoencoder(32)
-autoencoder.load_state_dict(torch.load("saved_models/autoencoder_model.pth"))
+autoencoder.load_state_dict(torch.load("saved_models/autoencoder_model.pth", map_location=torch.device('cpu')))
 autoencoder.eval()
 
 embedding_layer = torch.nn.Linear(30,32)
 
 # Load GraphSAGE model for batch processing
 graphsage = GraphSAGE(input_dim=30)
-graphsage.load_state_dict(torch.load("saved_models/graphsage_model.pth"))
+graphsage.load_state_dict(torch.load("saved_models/graphsage_model.pth", map_location=torch.device('cpu')))
 graphsage.eval()
 
 
