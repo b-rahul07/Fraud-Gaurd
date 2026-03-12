@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath("."))
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import torch
 import numpy as np
@@ -64,40 +64,53 @@ init_db()
 
 @app.route('/')
 def home():
+    try:
+        conn = sqlite3.connect("results.db")
+        c = conn.cursor()
 
-    conn = sqlite3.connect("results.db")
-    c = conn.cursor()
+        # last predictions
+        c.execute("SELECT * FROM results ORDER BY id DESC LIMIT 10")
+        rows = c.fetchall()
 
-    # last predictions
-    c.execute("SELECT * FROM results ORDER BY id DESC LIMIT 10")
-    rows = c.fetchall()
+        # fraud count
+        c.execute("SELECT COUNT(*) FROM results WHERE prediction='Fraudulent'")
+        fraud_count = c.fetchone()[0]
 
-    # fraud count
-    c.execute("SELECT COUNT(*) FROM results WHERE prediction='Fraudulent'")
-    fraud_count = c.fetchone()[0]
+        # genuine count
+        c.execute("SELECT COUNT(*) FROM results WHERE prediction='Genuine'")
+        genuine_count = c.fetchone()[0]
 
-    # genuine count
-    c.execute("SELECT COUNT(*) FROM results WHERE prediction='Genuine'")
-    genuine_count = c.fetchone()[0]
+        # error values
+        c.execute("SELECT error FROM results ORDER BY id DESC LIMIT 10")
+        error_data = [row[0] for row in c.fetchall()]
 
-    # error values
-    c.execute("SELECT error FROM results ORDER BY id DESC LIMIT 10")
-    error_data = [row[0] for row in c.fetchall()]
+        # amount values
+        c.execute("SELECT amount FROM results ORDER BY id DESC LIMIT 10")
+        amount_data = [row[0] for row in c.fetchall()]
 
-    # amount values
-    c.execute("SELECT amount FROM results ORDER BY id DESC LIMIT 10")
-    amount_data = [row[0] for row in c.fetchall()]
+        conn.close()
 
-    conn.close()
-
-    return render_template(
-        "index.html",
-        results=rows,
-        fraud_count=fraud_count,
-        genuine_count=genuine_count,
-        error_data=error_data,
-        amount_data=amount_data
-    )
+        return jsonify({
+            "status": "online",
+            "service": "Fraud Guard API",
+            "stats": {
+                "fraud_count": fraud_count,
+                "genuine_count": genuine_count,
+                "total_predictions": fraud_count + genuine_count,
+                "recent_predictions": len(rows)
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "online",
+            "service": "Fraud Guard API",
+            "stats": {
+                "fraud_count": 0,
+                "genuine_count": 0,
+                "total_predictions": 0,
+                "recent_predictions": 0
+            }
+        })
 
 
 # ---------------- PREDICT ----------------
@@ -154,14 +167,13 @@ def predict():
     conn.close()
 
 
-    return render_template(
-        "result.html",
-        prediction=prediction,
-        error=round(error,6),
-        threshold=round(threshold,6),
-        time=time_val,
-        amount=amount_val
-    )
+    return jsonify({
+        "prediction": prediction,
+        "error": round(error, 6),
+        "threshold": round(threshold, 6),
+        "time": time_val,
+        "amount": amount_val
+    })
 
 
 # ---------------- API ENDPOINTS ----------------
