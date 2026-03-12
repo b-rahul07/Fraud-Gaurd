@@ -12,7 +12,7 @@
 [![Flask](https://img.shields.io/badge/Flask-3.1-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-Authentication-ffca28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
 
-[Live Demo](https://fraud-gaurd-mu.vercel.app) • [Report Bug](https://github.com/b-rahul07/Fraud-Gaurd/issues) • [Documentation](./INTEGRATION_GUIDE.md)
+[Live Demo](https://fraud-gaurd-mu.vercel.app/) • [Report Bug](https://github.com/b-rahul07/Fraud-Gaurd/issues) • [Documentation](./INTEGRATION_GUIDE.md)
 
 </div>
 
