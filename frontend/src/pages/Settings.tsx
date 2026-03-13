@@ -31,13 +31,13 @@ export default function Settings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
+      <div className="space-y-6 max-w-4xl mx-auto w-full">
+        <div className="text-center">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Settings</h1>
           <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
         </div>
 
-        <div className="grid gap-6 max-w-2xl">
+        <div className="grid gap-6 max-w-2xl mx-auto w-full">
           {/* Profile Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
