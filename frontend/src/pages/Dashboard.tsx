@@ -3,7 +3,21 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { KpiCard } from "@/components/KpiCard";
 import { Activity, ShieldCheck, Target, Eye, Upload } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  LineChart,
+  Line,
 } from "recharts";
 import { useBatch } from "@/contexts/BatchContext";
 import { Button } from "@/components/ui/button";
@@ -227,6 +241,37 @@ export default function Dashboard() {
       .slice(0, 10);
   }, [batchData]);
 
+  const pieBreakdownData = useMemo(() => {
+    const genuine = sanitizeNumber(stats?.genuineCount, 0);
+    const fraud = sanitizeNumber(stats?.fraudCount, 0);
+    return [
+      { name: "Genuine", value: genuine, color: "hsl(157,100%,46%)" },
+      { name: "Fraud", value: fraud, color: "hsl(0,90%,63%)" },
+    ];
+  }, [stats]);
+
+  const amountBarData = useMemo(() => {
+    return recentTransactions
+      .slice()
+      .sort((a, b) => a.time - b.time)
+      .slice(-10)
+      .map((tx, idx) => ({
+        index: idx + 1,
+        amount: sanitizeNumber(tx.amount, 0),
+      }));
+  }, [recentTransactions]);
+
+  const reconstructionLineData = useMemo(() => {
+    return recentTransactions
+      .slice()
+      .sort((a, b) => a.time - b.time)
+      .slice(-10)
+      .map((tx, idx) => ({
+        index: idx + 1,
+        error: sanitizeNumber(tx.reconstructionError, 0),
+      }));
+  }, [recentTransactions]);
+
   // Calculate model metrics with sanitization
   const recall = useMemo(() => {
     if (!batchData) return 0;
@@ -376,6 +421,100 @@ export default function Dashboard() {
                     <Bar dataKey="blocked" fill="hsl(68,100%,50%)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Fraud Analytics */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="text-base font-semibold text-foreground mb-2">Fraud Analytics</h3>
+              <p className="text-sm text-muted-foreground mb-5">
+                The charts below visualize fraud distribution, transaction amount patterns, and anomaly reconstruction errors.
+              </p>
+
+              <div className="grid lg:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={pieBreakdownData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={0}
+                        outerRadius={95}
+                        dataKey="value"
+                        stroke="hsl(232,12%,12%)"
+                        strokeWidth={2}
+                      >
+                        {pieBreakdownData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => value.toLocaleString()}
+                        contentStyle={{
+                          backgroundColor: "hsl(230,10%,10%)",
+                          border: "1px solid hsl(232,12%,18%)",
+                          borderRadius: "12px",
+                          color: "hsl(0,0%,95%)",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={amountBarData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(232,12%,18%)" />
+                      <XAxis dataKey="index" stroke="hsl(228,5%,55%)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="hsl(228,5%,55%)" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        formatter={(value: number) => [`$${value.toFixed(2)}`, "Transaction Amount"]}
+                        contentStyle={{
+                          backgroundColor: "hsl(230,10%,10%)",
+                          border: "1px solid hsl(232,12%,18%)",
+                          borderRadius: "12px",
+                          color: "hsl(0,0%,95%)",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="amount" name="Transaction Amount" fill="hsl(76, 100%, 50%)" radius={[5, 5, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={reconstructionLineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(232,12%,18%)" />
+                      <XAxis dataKey="index" stroke="hsl(228,5%,55%)" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="hsl(228,5%,55%)" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        formatter={(value: number) => [value.toExponential(3), "Reconstruction Error"]}
+                        contentStyle={{
+                          backgroundColor: "hsl(230,10%,10%)",
+                          border: "1px solid hsl(232,12%,18%)",
+                          borderRadius: "12px",
+                          color: "hsl(0,0%,95%)",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="error"
+                        name="Reconstruction Error"
+                        stroke="hsl(194, 100%, 55%)"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: "hsl(230,10%,10%)" }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
 
