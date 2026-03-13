@@ -406,7 +406,7 @@ export default function BatchAnalysis() {
                     <p>1. Upload a CSV file containing transaction data (Time, V1-V28, Amount columns)</p>
                     <p>2. GraphSAGE builds a k-nearest neighbors graph to capture structural relationships</p>
                     <p>3. Neural network generates embeddings and detects anomalies via reconstruction error</p>
-                    <p>4. Results are displayed below and synced to the Dashboard for real-time monitoring</p>
+                    <p>4. Results are displayed below and synced to the Dashboard for batch monitoring</p>
                   </CardDescription>
                 </div>
               </div>

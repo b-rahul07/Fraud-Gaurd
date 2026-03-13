@@ -323,7 +323,7 @@ export default function Dashboard() {
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold">No Batch Data Loaded</h2>
               <p className="text-muted-foreground max-w-md">
-                Upload a CSV file in Batch Analysis to see real-time fraud detection statistics and visualizations.
+                Upload a CSV file in Batch Analysis to view batch fraud detection statistics and visualizations.
               </p>
             </div>
             <Button size="lg" onClick={() => navigate('/batch-analysis')} className="mt-4 gap-2">

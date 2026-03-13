@@ -16,8 +16,8 @@ const features = [
   },
   {
     icon: Zap,
-    title: "Real-Time Inference",
-    description: "Sub-100ms latency for live transaction scoring.",
+    title: "On-Demand Inference",
+    description: "Fast API scoring for transaction analysis.",
   },
 ];
 
@@ -105,7 +105,7 @@ export default function Landing() {
         >
           {[
             { value: "92%", label: "Model Recall" },
-            { value: "<100ms", label: "Inference Time" },
+            { value: "<100ms", label: "Avg Processing Time" },
             { value: "120K+", label: "Transactions / Day" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
