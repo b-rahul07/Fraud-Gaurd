@@ -67,9 +67,9 @@ export default function Landing() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight text-foreground"
         >
-          Real-Time Fraud
+          Detecting Fraud with
           <br />
-          <span className="text-gradient">Prevention</span>
+          <span className="text-gradient">Data-Driven Intelligence</span>
         </motion.h1>
 
         <motion.p
@@ -78,7 +78,7 @@ export default function Landing() {
           transition={{ duration: 0.7, delay: 0.25 }}
           className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed"
         >
-          Hybrid deep learning system detecting fraudulent transactions in real-time.
+          Hybrid deep learning system for proactive fraud detection.
         </motion.p>
 
         <motion.div
