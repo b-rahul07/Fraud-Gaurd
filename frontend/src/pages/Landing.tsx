@@ -104,9 +104,9 @@ export default function Landing() {
           className="mt-16 grid grid-cols-3 gap-8 md:gap-16"
         >
           {[
-            { value: "92%", label: "Model Recall" },
-            { value: "<100ms", label: "Avg Processing Time" },
-            { value: "120K+", label: "Transactions / Day" },
+            { value: "99.7%", label: "Normal Tx Confidence" },
+            { value: "<200ms", label: "Avg Processing Time" },
+            { value: "2-Stage", label: "Detection Pipeline" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</p>
