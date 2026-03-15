@@ -1,51 +1,67 @@
-# Graph-Based Credit Card Fraud Detection
+<div align="center">
 
-This project detects fraudulent credit card transactions using:
+# FraudGuard Backend
 
-Graph Neural Networks (GraphSAGE)
-Autoencoder-based anomaly detection
-Flask web interface
+### Graph-Based Credit Card Fraud Detection API
 
-## Architecture
+Flask + GraphSAGE + Autoencoder pipeline for single and batch fraud inference.
 
-Transaction Data → Graph Construction → GraphSAGE → Node Embeddings → Autoencoder → Fraud Detection
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.1-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.5-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![PyG](https://img.shields.io/badge/PyTorch%20Geometric-GNN-orange?style=for-the-badge)](https://pytorch-geometric.readthedocs.io/)
 
-## Run Project
+</div>
 
-Install dependencies
+---
 
+## Overview
+
+This backend detects structural transaction anomalies using a two-stage pipeline:
+
+```text
+Input Features (30) -> Graph Construction (KNN) -> GraphSAGE Embeddings (32D)
+-> Autoencoder Reconstruction -> MSE Scoring -> Fraud / Genuine
+```
+
+## Quick Start
+
+```bash
 pip install -r requirements.txt
-
-Train model
-
-python models/train_model.py
-
-Run Flask app
-
+python models/train_model.py  # run once if model files are missing
 python app.py
+```
 
-Open browser
+Local API base URL:
 
+```text
 http://127.0.0.1:5000
+```
 
 ## API Endpoints
 
-### 1. Single Transaction Prediction
-**POST** `/api/predict`
+- `POST /api/predict`: single transaction inference.
+- `POST /api/batch-predict`: CSV batch inference.
+- `GET /api/stats`: dashboard summary metrics.
+- `GET /api/transactions?limit=10`: recent predictions.
 
-Request body (JSON):
+### Single Prediction Example
+
+Request:
+
 ```json
 {
   "Time": 0.0,
   "V1": -1.35980713,
   "V2": -0.07278117,
-  ...
+  "...": "...",
   "V28": -0.02105305,
   "Amount": 149.62
 }
 ```
 
 Response:
+
 ```json
 {
   "prediction": "Genuine",
@@ -57,88 +73,35 @@ Response:
 }
 ```
 
-### 2. Batch CSV Processing (NEW)
-**POST** `/api/batch-predict`
+### Batch CSV Example
 
-Upload a CSV file containing multiple transactions through GraphSAGE → Autoencoder pipeline.
+Requirements:
+- Content type: `multipart/form-data`
+- Columns: `Time,V1,...,V28,Amount`
 
-**Content-Type**: `multipart/form-data`
-
-**CSV Format**: Must include columns `Time`, `V1` through `V28`, and `Amount`
-
-Example using curl:
 ```bash
-curl -X POST http://localhost:5000/api/batch-predict \
-  -F "file=@transactions.csv"
+curl -X POST http://localhost:5000/api/batch-predict -F "file=@sample_batch.csv"
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "totalTransactions": 100,
-  "fraudulentCount": 12,
-  "genuineCount": 88,
-  "results": [
-    {
-      "transactionId": "TXN-000001",
-      "time": 0.0,
-      "amount": 149.62,
-      "reconstructionError": 0.012345,
-      "structuralConfidence": 0.9876,
-      "threshold": 0.023456,
-      "isFraud": false,
-      "prediction": "Genuine"
-    },
-    ...
-  ]
-}
-```
+Optional endpoint test:
 
-**Test the batch endpoint**:
 ```bash
 python test_batch_endpoint.py
 ```
 
-### 3. Dashboard Statistics
-**GET** `/api/stats`
+## Pipeline Notes
 
-Returns fraud detection statistics (total monitored, fraud count, fraud rate, etc.)
+- Single prediction uses scaled input + embedding + autoencoder scoring.
+- Batch prediction builds a KNN graph (`k=5`) and uses GraphSAGE context.
+- Decision rule uses statistical thresholding (`mu + 3*sigma`).
 
-### 4. Recent Transactions
-**GET** `/api/transactions?limit=10`
+## Model Artifacts
 
-Returns recent transaction history from the database
+- `saved_models/autoencoder_model.pth`
+- `saved_models/graphsage_model.pth`
+- `saved_models/scaler.pkl`
+- `saved_models/threshold.pkl`
 
-## Pipeline Details
+## Sample Data
 
-### Single Prediction Flow
-1. Input: 30 features (Time, V1-V28, Amount)
-2. Scale Time and Amount using StandardScaler
-3. Linear embedding layer (30 → 32 dimensions)
-4. Autoencoder reconstruction (32 → 16 → 8 → 16 → 32)
-5. Calculate MSE between embedding and reconstruction
-6. Compare MSE against threshold (μ + 3σ)
-
-### Batch Prediction Flow
-1. Upload CSV with multiple transactions
-2. Parse and validate column structure
-3. Scale Time and Amount for all transactions
-4. Build k-nearest neighbors graph (k=5)
-5. GraphSAGE model generates embeddings (30 → 32)
-6. Autoencoder reconstructs embeddings
-7. Calculate reconstruction error (MSE) per transaction
-8. Calculate structural confidence (cosine similarity)
-9. Apply threshold to determine fraud status
-10. Return detailed results for each transaction
-
-## Model Files
-
-- `autoencoder_model.pth` - Trained autoencoder weights
-- `graphsage_model.pth` - Trained GraphSAGE weights
-- `scaler.pkl` - StandardScaler for Time/Amount normalization
-- `threshold.pkl` - Anomaly detection threshold (μ + 3σ)
-
-## Sample Files
-
-- `sample_batch.csv` - Example CSV with 3 transactions for testing batch endpoint
+- `sample_batch.csv`: minimal CSV for batch endpoint checks.
