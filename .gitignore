@@ -99,3 +99,12 @@ htmlcov/
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+Fraud-Gaurd/
+Fraud-Gaurd-main/
+*.zip
+catboost_info/
+
+*.csv
+*.parquet
+*.db

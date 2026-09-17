@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Scan, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
-import NetworkGraph from "@/components/NetworkGraph";
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import { apiService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,13 +13,14 @@ interface SimResult {
   status: ResultStatus;
   anomalyScore: number;
   threshold: number;
+  explain?: Array<{feature: string, shap_value: number, direction: string}>;
 }
 
 export default function Simulator() {
   const [amount, setAmount] = useState("245.00");
   const [time, setTime] = useState("14");
   const [profile, setProfile] = useState<"genuine" | "fraud">("genuine");
-  const [result, setResult] = useState<SimResult>({ status: "idle", anomalyScore: 0, threshold: 0 });
+  const [result, setResult] = useState<SimResult>({ status: "idle", anomalyScore: 0, threshold: 0, explain: [] });
   const [analysisSignal, setAnalysisSignal] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { toast } = useToast();
@@ -43,6 +44,7 @@ export default function Simulator() {
         status: prediction.isFraud ? "blocked" : "approved",
         anomalyScore: prediction.anomalyScore,
         threshold: prediction.threshold,
+        explain: prediction.explain,
       });
       
       toast({
@@ -143,25 +145,25 @@ export default function Simulator() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground">Feature Pipeline</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">GraphSAGE → Autoencoder</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">V7 Ensemble Model</span>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex justify-between text-[11px]">
                       <span className="text-muted-foreground">Input Features</span>
-                      <span className="text-foreground font-mono">30-dim</span>
+                      <span className="text-foreground font-mono">33-dim</span>
                     </div>
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Graph Embeddings</span>
-                      <span className="text-foreground font-mono">32-dim</span>
+                      <span className="text-muted-foreground">Models</span>
+                      <span className="text-foreground font-mono">XGB, LGBM, CB</span>
                     </div>
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Latent Space</span>
-                      <span className="text-foreground font-mono">8-dim</span>
+                      <span className="text-muted-foreground">Aggregation</span>
+                      <span className="text-foreground font-mono">Simple Average</span>
                     </div>
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Reconstruction Loss</span>
-                      <span className="text-secondary font-mono">MSE Metric</span>
+                      <span className="text-muted-foreground">Explainability</span>
+                      <span className="text-secondary font-mono">SHAP TreeExplainer</span>
                     </div>
                   </div>
 
@@ -261,12 +263,12 @@ export default function Simulator() {
                   subtitle="Lower than threshold = approved"
                 />
                 <ScoreBar 
-                  label="Structural Confidence" 
-                  value={Math.max(0, Math.min(1, 1 - (result.anomalyScore / (result.threshold * 2))))} 
-                  threshold={0.5}
+                  label="Ensemble Probability" 
+                  value={result.anomalyScore} 
+                  threshold={1.0}
                   danger={result.anomalyScore > result.threshold} 
                   isPercentage={true}
-                  subtitle="Embedding Similarity"
+                  subtitle="Fraud likelihood"
                 />
                 <div className="text-xs text-muted-foreground pt-2 space-y-1">
                   <div>
@@ -274,19 +276,66 @@ export default function Simulator() {
                     <span className="font-mono text-foreground">{result.threshold.toFixed(6)}</span>
                   </div>
                   <div className="text-[10px]">
-                    Autoencoder trained on genuine transactions | σ = 3.0 deviation
+                    Probability averaged across XGBoost, LightGBM, and CatBoost
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {/* Network Graph */}
-            <NetworkGraph
-              status={result.status}
-              anomalyScore={result.anomalyScore}
-              threshold={result.threshold}
-              signal={analysisSignal}
-            />
+            {/* Why Flagged Panel (SHAP) */}
+            {result.explain && result.explain.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-2xl border border-border bg-card p-5 space-y-4"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-base font-semibold text-foreground">Why Flagged (SHAP)</h3>
+                  <span className="text-[10px] text-muted-foreground border border-border px-2 py-0.5 rounded-full">
+                    Top 5 Features
+                  </span>
+                </div>
+                <div className="h-[200px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={result.explain.map(e => ({
+                        ...e,
+                        displayValue: Math.abs(e.shap_value)
+                      })).sort((a, b) => b.displayValue - a.displayValue)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="feature" type="category" axisLine={false} tickLine={false} tick={{fill: "hsl(228,5%,55%)", fontSize: 12}} />
+                      <RechartsTooltip 
+                        formatter={(value: any, name: any, props: any) => [
+                          props.payload.shap_value.toFixed(4), 
+                          `SHAP (${props.payload.direction})`
+                        ]}
+                        contentStyle={{
+                          backgroundColor: "hsl(230,10%,10%)",
+                          border: "1px solid hsl(232,12%,18%)",
+                          borderRadius: "8px",
+                          color: "hsl(0,0%,95%)",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Bar dataKey="displayValue" radius={[0, 4, 4, 0]} barSize={16}>
+                        {
+                          result.explain.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.shap_value > 0 ? "hsl(0, 80%, 60%)" : "hsl(157, 100%, 46%)"} />
+                          ))
+                        }
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Red bars increase fraud probability; green bars decrease it.
+                </p>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

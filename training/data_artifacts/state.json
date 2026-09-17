@@ -1,0 +1,72 @@
+{
+  "data_engineered": true,
+  "cv_folds_created": true,
+  "cv_folds_done": [
+    "0_catboost",
+    "0_lightgbm",
+    "0_xgboost",
+    "1_catboost",
+    "1_lightgbm",
+    "1_xgboost",
+    "2_catboost",
+    "2_lightgbm",
+    "2_xgboost",
+    "3_catboost",
+    "3_lightgbm",
+    "3_xgboost",
+    "4_catboost",
+    "4_lightgbm",
+    "4_xgboost"
+  ],
+  "optuna_studies": {
+    "xgboost": 100,
+    "lightgbm": 55,
+    "catboost": 33
+  },
+  "cv_tuned_folds_done": [
+    "0_catboost",
+    "0_lightgbm",
+    "0_xgboost",
+    "1_catboost",
+    "1_lightgbm",
+    "1_xgboost",
+    "2_catboost",
+    "2_lightgbm",
+    "2_xgboost",
+    "3_catboost",
+    "3_lightgbm",
+    "3_xgboost",
+    "4_catboost",
+    "4_lightgbm",
+    "4_xgboost"
+  ],
+  "ensemble_done": true,
+  "shap_done": true,
+  "graph_ablation": {
+    "k_sensitivity_done": [
+      "10",
+      "15",
+      "20",
+      "3",
+      "5"
+    ],
+    "split_init_done": [
+      "42_1",
+      "42_2",
+      "42_3",
+      "43_1",
+      "43_2",
+      "43_3",
+      "44_1",
+      "44_2",
+      "44_3",
+      "45_1",
+      "45_2",
+      "45_3",
+      "46_1",
+      "46_2",
+      "46_3"
+    ]
+  },
+  "report_done": true
+}

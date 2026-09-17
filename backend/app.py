@@ -4,43 +4,38 @@ sys.path.append(os.path.abspath("."))
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import torch
 import numpy as np
 import pandas as pd
 import joblib
 import sqlite3
-from datetime import datetime
-from werkzeug.utils import secure_filename
-import io
+import json
 import traceback
-
-from models.autoencoder import Autoencoder
-from models.graphsage_model import GraphSAGE
-from graph.graph_builder import build_graph
+import shap
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Load models
+# Load configuration and models
+with open("saved_models/model_config.json", "r") as f:
+    model_config = json.load(f)
+
+with open("saved_models/experiment_summary.json", "r") as f:
+    experiment_summary = json.load(f)
+
+feature_names = model_config["feature_names"]
+threshold = model_config["thresholds"]["ensemble_avg"]
+
 scaler = joblib.load("saved_models/scaler.pkl")
-threshold = joblib.load("saved_models/threshold.pkl")
+xgboost_model = joblib.load("saved_models/xgboost_model.pkl")
+lightgbm_model = joblib.load("saved_models/lightgbm_model.pkl")
+catboost_model = joblib.load("saved_models/catboost_model.pkl")
 
-autoencoder = Autoencoder(32)
-autoencoder.load_state_dict(torch.load("saved_models/autoencoder_model.pth", map_location=torch.device('cpu')))
-autoencoder.eval()
-
-embedding_layer = torch.nn.Linear(30,32)
-
-# Load GraphSAGE model for batch processing
-graphsage = GraphSAGE(input_dim=30)
-graphsage.load_state_dict(torch.load("saved_models/graphsage_model.pth", map_location=torch.device('cpu')))
-graphsage.eval()
-
+# Initialize SHAP explainer for XGBoost (fastest for single predictions)
+explainer = shap.TreeExplainer(xgboost_model)
 
 # ---------------- DATABASE ----------------
 
 def init_db():
-
     conn = sqlite3.connect("results.db")
     c = conn.cursor()
 
@@ -59,6 +54,34 @@ def init_db():
 
 init_db()
 
+# ---------------- HELPERS ----------------
+
+def engineer_features(df):
+    """Adds engineered features to dataframe if they don't exist"""
+    # Assuming 'Time' is in seconds
+    if 'hour_sin' not in df.columns or 'hour_cos' not in df.columns:
+        hours = (df['Time'] / 3600) % 24
+        df['hour_sin'] = np.sin(2 * np.pi * hours / 24)
+        df['hour_cos'] = np.cos(2 * np.pi * hours / 24)
+    
+    if 'log1p_Amount' not in df.columns:
+        df['log1p_Amount'] = np.log1p(df['Amount'])
+        
+    return df
+
+def predict_ensemble(features_df):
+    """Predicts probabilities using the ensemble models"""
+    # Ensure columns match training order exactly
+    features_df = features_df[feature_names]
+    
+    # Get probabilities (class 1)
+    xgb_prob = xgboost_model.predict_proba(features_df)[:, 1]
+    lgb_prob = lightgbm_model.predict_proba(features_df)[:, 1]
+    cat_prob = catboost_model.predict_proba(features_df)[:, 1]
+    
+    # Simple average
+    avg_prob = (xgb_prob + lgb_prob + cat_prob) / 3.0
+    return avg_prob
 
 # ---------------- HOME ----------------
 
@@ -68,31 +91,20 @@ def home():
         conn = sqlite3.connect("results.db")
         c = conn.cursor()
 
-        # last predictions
         c.execute("SELECT * FROM results ORDER BY id DESC LIMIT 10")
         rows = c.fetchall()
 
-        # fraud count
         c.execute("SELECT COUNT(*) FROM results WHERE prediction='Fraudulent'")
         fraud_count = c.fetchone()[0]
 
-        # genuine count
         c.execute("SELECT COUNT(*) FROM results WHERE prediction='Genuine'")
         genuine_count = c.fetchone()[0]
-
-        # error values
-        c.execute("SELECT error FROM results ORDER BY id DESC LIMIT 10")
-        error_data = [row[0] for row in c.fetchall()]
-
-        # amount values
-        c.execute("SELECT amount FROM results ORDER BY id DESC LIMIT 10")
-        amount_data = [row[0] for row in c.fetchall()]
 
         conn.close()
 
         return jsonify({
             "status": "online",
-            "service": "Fraud Guard API",
+            "service": "Fraud Guard API (V7 Ensemble)",
             "stats": {
                 "fraud_count": fraud_count,
                 "genuine_count": genuine_count,
@@ -117,63 +129,58 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    try:
+        # Expecting raw features V1-V28, Time, Amount from form
+        # This endpoint is mostly legacy, handled similarly to api_predict
+        data = request.form.to_dict()
+        
+        # Build dataframe
+        df = pd.DataFrame([data])
+        
+        # Convert all to float
+        for col in df.columns:
+            if df[col].iloc[0] == "":
+                df[col] = 0.0
+            else:
+                df[col] = float(df[col].iloc[0])
+                
+        time_val = df['Time'].iloc[0] if 'Time' in df.columns else 0.0
+        amount_val = df['Amount'].iloc[0] if 'Amount' in df.columns else 0.0
+        
+        # Engineer features
+        df = engineer_features(df)
+        
+        # Ensure exact column order
+        features_df = df[feature_names]
+        
+        # Scale all features
+        scaled = scaler.transform(features_df)
+        features_df = pd.DataFrame(scaled, columns=feature_names)
+            
+        # Predict
+        avg_prob = predict_ensemble(features_df)[0]
+        
+        prediction = "Fraudulent" if avg_prob > threshold else "Genuine"
+        
+        # Save result
+        conn = sqlite3.connect("results.db")
+        c = conn.cursor()
+        c.execute("""
+        INSERT INTO results(time,amount,error,prediction)
+        VALUES(?,?,?,?)
+        """,(time_val, amount_val, float(avg_prob), prediction))
+        conn.commit()
+        conn.close()
 
-    values = []
-
-    for x in request.form.values():
-
-        if x.strip()=="":
-            values.append(0.0)
-        else:
-            values.append(float(x))
-
-    values = np.array(values)
-
-    time_val = values[0]
-    amount_val = values[-1]
-
-    scaled = scaler.transform([[time_val, amount_val]])
-
-    values[0] = scaled[0][0]
-    values[-1] = scaled[0][1]
-
-    features = values.reshape(1,-1)
-
-    features = torch.tensor(features, dtype=torch.float)
-
-    embedding = embedding_layer(features)
-
-    recon = autoencoder(embedding)
-
-    error = torch.mean((embedding-recon)**2).item()
-
-    if error > threshold:
-        prediction = "Fraudulent"
-    else:
-        prediction = "Genuine"
-
-
-    # -------- SAVE RESULT --------
-
-    conn = sqlite3.connect("results.db")
-    c = conn.cursor()
-
-    c.execute("""
-    INSERT INTO results(time,amount,error,prediction)
-    VALUES(?,?,?,?)
-    """,(time_val,amount_val,error,prediction))
-
-    conn.commit()
-    conn.close()
-
-
-    return jsonify({
-        "prediction": prediction,
-        "error": round(error, 6),
-        "threshold": round(threshold, 6),
-        "time": time_val,
-        "amount": amount_val
-    })
+        return jsonify({
+            "prediction": prediction,
+            "error": round(float(avg_prob), 6),
+            "threshold": round(float(threshold), 6),
+            "time": time_val,
+            "amount": amount_val
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 
 # ---------------- API ENDPOINTS ----------------
@@ -246,42 +253,54 @@ def get_transactions():
 
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
-    """API endpoint for fraud prediction"""
+    """API endpoint for fraud prediction (V7 Ensemble)"""
     try:
         data = request.get_json()
         
-        # Extract features - expecting V1-V28, Time, Amount (30 features total)
-        features = []
-        features.append(float(data.get('Time', 0)))
+        # Build dataframe from input data
+        df = pd.DataFrame([data])
         
-        for i in range(1, 29):
-            features.append(float(data.get(f'V{i}', 0)))
+        # Ensure base features exist
+        for col in ['Time', 'Amount'] + [f'V{i}' for i in range(1, 29)]:
+            if col not in df.columns:
+                df[col] = 0.0
+            else:
+                df[col] = float(df[col].iloc[0])
+                
+        time_val = float(df['Time'].iloc[0])
+        amount_val = float(df['Amount'].iloc[0])
         
-        features.append(float(data.get('Amount', 0)))
+        # Engineer features
+        df = engineer_features(df)
         
-        # Store original values
-        time_val = features[0]
-        amount_val = features[-1]
+        # Ensure exact column order for SHAP and prediction
+        features_df = df[feature_names]
         
-        # Scale Time and Amount
-        scaled = scaler.transform([[time_val, amount_val]])
-        features[0] = scaled[0][0]
-        features[-1] = scaled[0][1]
+        # Scale all features
+        scaled = scaler.transform(features_df)
+        features_df = pd.DataFrame(scaled, columns=feature_names)
         
-        # Convert to tensor
-        features_tensor = torch.tensor(features, dtype=torch.float).reshape(1, -1)
+        # Predict probability
+        avg_prob = predict_ensemble(features_df)[0]
         
-        # Get embedding
-        embedding = embedding_layer(features_tensor)
+        # SHAP explainability (using XGBoost as proxy for the ensemble)
+        shap_values = explainer(features_df)
+        # For a single prediction, shap_values.values is 2D: (1, n_features)
+        feature_contributions = shap_values.values[0]
         
-        # Get reconstruction
-        recon = autoencoder(embedding)
+        # Get top 5 by magnitude
+        indices = np.argsort(np.abs(feature_contributions))[-5:][::-1]
         
-        # Calculate error
-        error = torch.mean((embedding - recon)**2).item()
-        
-        # Make prediction
-        prediction = "Fraudulent" if error > threshold else "Genuine"
+        explain = []
+        for idx in indices:
+            val = float(feature_contributions[idx])
+            explain.append({
+                "feature": feature_names[idx],
+                "shap_value": val,
+                "direction": "toward fraud" if val > 0 else "toward genuine"
+            })
+            
+        prediction = "Fraudulent" if avg_prob > threshold else "Genuine"
         
         # Save to database
         conn = sqlite3.connect("results.db")
@@ -289,31 +308,29 @@ def api_predict():
         c.execute("""
         INSERT INTO results(time, amount, error, prediction)
         VALUES(?,?,?,?)
-        """, (time_val, amount_val, error, prediction))
+        """, (time_val, amount_val, float(avg_prob), prediction))
         conn.commit()
         conn.close()
         
         return jsonify({
             "prediction": prediction,
-            "anomalyScore": round(error, 6),
+            "anomalyScore": round(float(avg_prob), 6),
             "threshold": round(float(threshold), 6),
             "time": time_val,
             "amount": amount_val,
-            "isFraud": prediction == "Fraudulent"
+            "isFraud": prediction == "Fraudulent",
+            "explain": explain
         })
         
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
 
 @app.route('/api/batch-predict', methods=['POST'])
 def batch_predict():
-    """
-    Batch prediction endpoint for CSV file uploads.
-    Processes transactions through GraphSAGE -> Autoencoder pipeline.
-    """
+    """Batch prediction endpoint (V7 Ensemble)"""
     try:
-        # Check if file is present in request
         if 'file' not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
         
@@ -325,76 +342,47 @@ def batch_predict():
         if not file.filename.endswith('.csv'):
             return jsonify({"error": "File must be a CSV"}), 400
         
-        # Read CSV into pandas DataFrame
-        csv_data = file.read()
-        df = pd.read_csv(io.BytesIO(csv_data))
+        df = pd.read_csv(file)
         
-        # Validate required columns
         required_cols = ['Time'] + [f'V{i}' for i in range(1, 29)] + ['Amount']
         missing_cols = [col for col in required_cols if col not in df.columns]
         
         if missing_cols:
             return jsonify({"error": f"Missing columns: {', '.join(missing_cols)}"}), 400
         
-        # Extract features in correct order: Time, V1-V28, Amount
-        feature_data = df[required_cols].values
+        original_times = df['Time'].copy().values
+        original_amounts = df['Amount'].copy().values
         
-        # Store original Time and Amount values
-        original_times = feature_data[:, 0].copy()
-        original_amounts = feature_data[:, -1].copy()
+        # Engineer features
+        df = engineer_features(df)
         
-        # Scale Time and Amount for each transaction
-        scaled_values = scaler.transform(feature_data[:, [0, -1]])
-        feature_data[:, 0] = scaled_values[:, 0]
-        feature_data[:, -1] = scaled_values[:, 1]
+        # Ensure exact column order
+        features_df = df[feature_names]
         
-        # Build graph structure using k-nearest neighbors
-        x, edge_index = build_graph(feature_data)
+        # Scale all features
+        scaled_values = scaler.transform(features_df)
+        features_df = pd.DataFrame(scaled_values, columns=feature_names)
         
-        # Pass through GraphSAGE to get embeddings (30 -> 32 dimensions)
-        with torch.no_grad():
-            embeddings = graphsage(x, edge_index)
+        # Predict using ensemble
+        avg_probs = predict_ensemble(features_df)
+        predictions = avg_probs > threshold
         
-        # Pass embeddings through Autoencoder to get reconstructions
-        with torch.no_grad():
-            reconstructions = autoencoder(embeddings)
-        
-        # Calculate MSE (Reconstruction Error) for each transaction
-        mse_errors = torch.mean((embeddings - reconstructions) ** 2, dim=1).numpy()
-        
-        # Calculate Structural Confidence (cosine similarity between embedding and reconstruction)
-        embeddings_np = embeddings.numpy()
-        reconstructions_np = reconstructions.numpy()
-        
-        # Normalize vectors for cosine similarity
-        embeddings_norm = embeddings_np / (np.linalg.norm(embeddings_np, axis=1, keepdims=True) + 1e-8)
-        reconstructions_norm = reconstructions_np / (np.linalg.norm(reconstructions_np, axis=1, keepdims=True) + 1e-8)
-        
-        # Cosine similarity
-        structural_confidence = np.sum(embeddings_norm * reconstructions_norm, axis=1)
-        
-        # Make predictions based on threshold
-        predictions = mse_errors > threshold
-        
-        # Build results array
         results = []
         for idx in range(len(df)):
             transaction_result = {
                 "transactionId": f"TXN-{idx+1:06d}",
                 "time": float(original_times[idx]),
                 "amount": float(original_amounts[idx]),
-                "reconstructionError": float(mse_errors[idx]),
-                "structuralConfidence": float(structural_confidence[idx]),
+                "reconstructionError": float(avg_probs[idx]), # Mapping anomalyScore to reconstructionError to preserve frontend contract partially
+                "structuralConfidence": float(avg_probs[idx]), # Provide probability here too so it displays somewhat meaningfully
                 "threshold": float(threshold),
                 "isFraud": bool(predictions[idx]),
                 "prediction": "Fraudulent" if predictions[idx] else "Genuine"
             }
             results.append(transaction_result)
         
-        # Optionally save batch results to database
         conn = sqlite3.connect("results.db")
         c = conn.cursor()
-        
         for idx in range(len(df)):
             c.execute("""
             INSERT INTO results(time, amount, error, prediction)
@@ -402,7 +390,7 @@ def batch_predict():
             """, (
                 float(original_times[idx]),
                 float(original_amounts[idx]),
-                float(mse_errors[idx]),
+                float(avg_probs[idx]),
                 "Fraudulent" if predictions[idx] else "Genuine"
             ))
         
@@ -417,21 +405,8 @@ def batch_predict():
             "results": results
         })
         
-    except pd.errors.EmptyDataError:
-        print("\n=== CSV EMPTY ERROR ===")
-        traceback.print_exc()
-        return jsonify({"error": "CSV file is empty"}), 400
-    except pd.errors.ParserError as e:
-        print("\n=== CSV PARSING ERROR ===")
-        traceback.print_exc()
-        return jsonify({"error": f"CSV parsing error: {str(e)}"}), 400
     except Exception as e:
-        print("\n=== BATCH PREDICTION ERROR ===")
-        print(f"Error type: {type(e).__name__}")
-        print(f"Error message: {str(e)}")
-        print("\nFull traceback:")
         traceback.print_exc()
-        print("=== END ERROR ===")
         return jsonify({
             "error": f"Processing error: {str(e)}",
             "errorType": type(e).__name__,
@@ -439,7 +414,27 @@ def batch_predict():
         }), 500
 
 
+@app.route('/api/model-info', methods=['GET'])
+def model_info():
+    """Return model configuration and evaluation metrics"""
+    # Extract best CV results from experiment summary
+    cv_results = experiment_summary.get("ensemble", {}).get("avg_metrics", {})
+    
+    # Extract optuna best params
+    optuna_params = {
+        model: data.get("best_params", {})
+        for model, data in experiment_summary.get("optuna", {}).items()
+    }
+
+    return jsonify({
+        "version": model_config.get("version", "v7"),
+        "models": model_config.get("models", []),
+        "threshold": threshold,
+        "features": feature_names,
+        "metrics": cv_results,
+        "hyperparameters": optuna_params
+    })
+
 if __name__ == "__main__":
-    # Render assigns a dynamic port. Use environment variable or default to 5000.
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)

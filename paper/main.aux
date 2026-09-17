@@ -1,0 +1,84 @@
+\relax 
+\citation{dalpozzolo2015calibrating,abdallah2016fraud}
+\citation{phua2010comprehensive,bhattacharyya2011data}
+\citation{chen2016xgboost}
+\citation{ke2017lightgbm}
+\citation{prokhorenkova2018catboost}
+\citation{lundberg2017unified}
+\citation{hamilton2017inductive}
+\citation{zhu2020beyond,dou2020enhancing}
+\citation{abdallah2016fraud,phua2010comprehensive}
+\citation{dalpozzolo2015calibrating}
+\citation{macia2011smote}
+\citation{chen2016xgboost}
+\citation{ke2017lightgbm}
+\citation{prokhorenkova2018catboost}
+\citation{akiba2019optuna}
+\citation{bergstra2011algorithms}
+\citation{kipf2016semi}
+\citation{hamilton2017inductive}
+\citation{zhu2020beyond,dou2020enhancing,liu2021alleviating}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{1}{}\protected@file@percent }
+\citation{pedregosa2011scikit}
+\citation{akiba2019optuna}
+\citation{grinberg2018flask}
+\citation{facebook2013react}
+\citation{lundberg2017unified}
+\@writefile{toc}{\contentsline {section}{\numberline {III}System Architecture}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Data Pipeline and Feature Engineering}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Cross-Validation Protocol and Optuna HPO}{2}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Optuna search trajectories for all three models. Best-so-far PR-AUC is overlaid on each trial's raw score.}}{2}{}\protected@file@percent }
+\newlabel{fig:optuna}{{1}{2}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Ensembling and Model Export}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Flask API and React Dashboard}{2}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Global SHAP feature importance for the tuned ensemble (proxied via XGBoost). $V14$, $V4$, and $V12$ lead by a wide margin.}}{2}{}\protected@file@percent }
+\newlabel{fig:shap_global}{{2}{2}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Graph Ablation Study}{2}{}\protected@file@percent }
+\citation{dou2020enhancing,liu2021alleviating}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces The simulator scoring a fraudulent transaction live. Anomaly score 0.9999 against a threshold of 0.7725 -- the result is a hard BLOCKED classification, not a borderline one.}}{3}{}\protected@file@percent }
+\newlabel{fig:dashboard_live}{{3}{3}{}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces The per-transaction explanation for that same fraud case. $V14$, $V4$, $V10$, and $V12$ line up with the global ranking in Fig.~\ref {fig:shap_global}; $V8$ is the one feature pulling in the opposite direction.}}{3}{}\protected@file@percent }
+\newlabel{fig:shap_live}{{4}{3}{}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces FraudGuard against the ablated Autoencoder, split by split. PR-AUC and ROC-AUC both come out lower with the graph component included.}}{3}{}\protected@file@percent }
+\newlabel{fig:ablation_comp}{{5}{3}{}{figure.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Per-split deltas, FraudGuard minus PlainAE. Everything below zero means the graph made things worse on that split.}}{3}{}\protected@file@percent }
+\newlabel{fig:ablation_deltas}{{6}{3}{}{figure.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Evaluation}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Cross-Validation Results}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces PR-AUC, F1, and ROC-AUC for every model at both default and tuned settings, plus the ensemble. LightGBM's default-to-tuned jump is the largest by a wide margin.}}{3}{}\protected@file@percent }
+\newlabel{fig:cv_results}{{7}{3}{}{figure.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Explainability}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces SHAP beeswarm across the full feature set. High $V4$ pushes toward fraud; high $V14$ pushes the other way.}}{4}{}\protected@file@percent }
+\newlabel{fig:shap_beeswarm}{{8}{4}{}{figure.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Deployment Validation}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Deployment Sanity Check: Offline vs. API Scores}}{4}{}\protected@file@percent }
+\newlabel{tab:sanity_check}{{I}{4}{}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Held-Out Test Set Validation}{4}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Held-Out Test Set Results (Ensemble, $n=42{,}559$)}}{4}{}\protected@file@percent }
+\newlabel{tab:holdout}{{II}{4}{}{table.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion and Limitations}{4}{}\protected@file@percent }
+\bibstyle{IEEEtran}
+\bibdata{references}
+\bibcite{dalpozzolo2015calibrating}{1}
+\bibcite{abdallah2016fraud}{2}
+\bibcite{phua2010comprehensive}{3}
+\bibcite{bhattacharyya2011data}{4}
+\bibcite{chen2016xgboost}{5}
+\bibcite{ke2017lightgbm}{6}
+\bibcite{prokhorenkova2018catboost}{7}
+\bibcite{lundberg2017unified}{8}
+\bibcite{hamilton2017inductive}{9}
+\bibcite{zhu2020beyond}{10}
+\bibcite{dou2020enhancing}{11}
+\bibcite{macia2011smote}{12}
+\bibcite{akiba2019optuna}{13}
+\bibcite{bergstra2011algorithms}{14}
+\bibcite{kipf2016semi}{15}
+\bibcite{liu2021alleviating}{16}
+\bibcite{pedregosa2011scikit}{17}
+\bibcite{grinberg2018flask}{18}
+\bibcite{facebook2013react}{19}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{5}{}\protected@file@percent }
+\gdef \@abspage@last{5}

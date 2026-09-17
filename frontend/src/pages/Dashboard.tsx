@@ -428,7 +428,7 @@ export default function Dashboard() {
             <div className="rounded-2xl border border-border bg-card p-5">
               <h3 className="text-base font-semibold text-foreground mb-2">Fraud Analytics</h3>
               <p className="text-sm text-muted-foreground mb-5">
-                The charts below visualize fraud distribution, transaction amount patterns, and anomaly reconstruction errors.
+                The charts below visualize fraud distribution, transaction amount patterns, and ensemble anomaly scores.
               </p>
 
               <div className="grid lg:grid-cols-3 gap-4">
@@ -493,7 +493,7 @@ export default function Dashboard() {
                       <XAxis dataKey="index" stroke="hsl(228,5%,55%)" fontSize={11} tickLine={false} axisLine={false} />
                       <YAxis stroke="hsl(228,5%,55%)" fontSize={11} tickLine={false} axisLine={false} />
                       <Tooltip
-                        formatter={(value: number) => [value.toExponential(3), "Reconstruction Error"]}
+                        formatter={(value: number) => [value.toExponential(3), "Anomaly Score"]}
                         contentStyle={{
                           backgroundColor: "hsl(230,10%,10%)",
                           border: "1px solid hsl(232,12%,18%)",
@@ -506,7 +506,7 @@ export default function Dashboard() {
                       <Line
                         type="monotone"
                         dataKey="error"
-                        name="Reconstruction Error"
+                        name="Anomaly Score"
                         stroke="hsl(194, 100%, 55%)"
                         strokeWidth={3}
                         dot={{ r: 4, strokeWidth: 2, fill: "hsl(230,10%,10%)" }}
@@ -542,7 +542,7 @@ export default function Dashboard() {
                       <th className="text-left py-3 px-4 font-medium">Transaction ID</th>
                       <th className="text-right py-3 px-4 font-medium">Time</th>
                       <th className="text-right py-3 px-4 font-medium">Amount</th>
-                      <th className="text-right py-3 px-4 font-medium">MSE</th>
+                      <th className="text-right py-3 px-4 font-medium">Score</th>
                       <th className="text-center py-3 px-4 font-medium">Status</th>
                     </tr>
                   </thead>

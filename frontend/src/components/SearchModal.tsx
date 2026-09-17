@@ -125,13 +125,13 @@ export default function SearchModal({ open, onOpenChange }: SearchModalProps) {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Error:</span>
+                          <span className="text-muted-foreground">Score:</span>
                           <span className={`font-medium ${txn.isFraud ? 'text-red-600' : 'text-emerald-600'}`}>
                             {txn.reconstructionError.toFixed(4)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Confidence:</span>
+                          <span className="text-muted-foreground">Probability:</span>
                           <span className="font-medium text-foreground">
                             {(txn.structuralConfidence * 100).toFixed(1)}%
                           </span>

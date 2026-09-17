@@ -1,0 +1,4 @@
+{
+  "BEST_K": 5,
+  "BEST_METRIC": "euclidean"
+}

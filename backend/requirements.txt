@@ -8,3 +8,7 @@ torch==2.1.2
 torch-geometric==2.4.0
 gunicorn==21.2.0
 joblib==1.4.2
+xgboost==2.0.3
+lightgbm==4.3.0
+catboost==1.2.2
+shap==0.44.1

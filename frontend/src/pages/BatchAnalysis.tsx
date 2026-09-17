@@ -151,22 +151,21 @@ export default function BatchAnalysis() {
         fileName: file.name,
       };
 
-      // Step 2: Save to Firestore (user is guaranteed to exist from check above)
-      // Absolutely guarantee userId is included in the saved document
+      // Step 2: Display results immediately (don't block on Firestore)
+      setBatchData(batchDataWithFile);
+
+      toast({
+        title: "Analysis Complete",
+        description: `Processed ${result.totalTransactions} transactions successfully`,
+      });
+
+      // Step 3: Best-effort save to Firestore (non-blocking)
       try {
         await saveBatchToFirestore(user.uid, batchDataWithFile);
         console.log('Batch data saved to Firestore with userId:', user.uid);
-        
-        // Step 3: Reload all batches from Firestore to merge with existing data
         await loadUserBatches();
-        
-        toast({
-          title: "Analysis Complete",
-          description: `Processed ${result.totalTransactions} transactions successfully`,
-        });
       } catch (firestoreError) {
-        console.error('Firestore save failed:', firestoreError);
-        throw new Error('Failed to save batch data to database');
+        console.warn('Firestore save skipped (non-critical):', firestoreError);
       }
     } catch (error) {
       clearInterval(progressInterval);
@@ -188,7 +187,7 @@ export default function BatchAnalysis() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Batch Analysis</h1>
           <p className="text-muted-foreground mt-1">
-            Upload CSV files for bulk transaction fraud detection via GraphSAGE → Autoencoder pipeline
+            Upload CSV files for bulk transaction fraud detection via V7 Ensemble Model
           </p>
         </div>
 
@@ -353,8 +352,8 @@ export default function BatchAnalysis() {
                         <tr>
                           <th className="text-left p-3 text-xs font-medium">ID</th>
                           <th className="text-left p-3 text-xs font-medium">Amount</th>
-                          <th className="text-left p-3 text-xs font-medium">MSE</th>
-                          <th className="text-left p-3 text-xs font-medium">Confidence</th>
+                          <th className="text-left p-3 text-xs font-medium">Score</th>
+                          <th className="text-left p-3 text-xs font-medium">Probability</th>
                           <th className="text-left p-3 text-xs font-medium">Status</th>
                         </tr>
                       </thead>
@@ -404,8 +403,8 @@ export default function BatchAnalysis() {
                   <CardTitle className="text-base">How It Works</CardTitle>
                   <CardDescription className="mt-2 space-y-2">
                     <p>1. Upload a CSV file containing transaction data (Time, V1-V28, Amount columns)</p>
-                    <p>2. GraphSAGE builds a k-nearest neighbors graph to capture structural relationships</p>
-                    <p>3. Neural network generates embeddings and detects anomalies via reconstruction error</p>
+                    <p>2. The V7 Ensemble (XGBoost, LightGBM, CatBoost) evaluates the transaction.</p>
+                    <p>3. Anomaly scores are aggregated to classify the risk.</p>
                     <p>4. Results are displayed below and synced to the Dashboard for batch monitoring</p>
                   </CardDescription>
                 </div>
